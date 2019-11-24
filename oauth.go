@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/go-redis/redis"
+	"github.com/gorilla/sessions"
 	fb "github.com/huandu/facebook"
 	"golang.org/x/oauth2"
 	oauth2fb "golang.org/x/oauth2/facebook"
@@ -15,7 +16,7 @@ import (
 )
 
 //IdCookie is then name of the cookie that contains a facebook users id(used to query redis for jwt token)
-const IdCookie = "fb_id"
+const CookieName = "fb_auth"
 
 //FBVersion is the default version of the Facebook API
 var FBVersion = "v2.4"
@@ -26,6 +27,7 @@ type Auth struct {
 	cacheExpiration time.Duration
 	dashboardPath   string
 	app             *oauth2.Config
+	cookieStore     *sessions.CookieStore
 }
 
 //Config contains the required configuration for a Service
@@ -37,6 +39,7 @@ type Config struct {
 	Scopes        []string
 	CacheDuration time.Duration
 	DashboardPath string
+	SessionSecret string
 }
 
 //NewService initializes a new service instance
@@ -48,14 +51,15 @@ func NewAuth(c *Config) (*Auth, error) {
 		Scopes:       c.Scopes,
 		Endpoint:     oauth2fb.Endpoint,
 	}
-	a :=  &Auth{
+	a := &Auth{
 		cache:           c.Cache,
 		cacheExpiration: c.CacheDuration,
 		dashboardPath:   c.DashboardPath,
 		app:             conf,
+		cookieStore:     sessions.NewCookieStore([]byte(c.SessionSecret)),
 	}
 	if err := a.validate(); err != nil {
-		return  nil, err
+		return nil, err
 	}
 	return a, nil
 }
@@ -70,6 +74,17 @@ func (s *Auth) Callback() http.HandlerFunc {
 			http.Error(w, msg, http.StatusBadRequest)
 			return
 		}
+		cookie, err := s.cookieStore.Get(r, CookieName)
+		if err != nil || cookie == nil {
+			msg := "[Auth] failed to get session cookie"
+			log.Print(msg)
+			http.Error(w, msg, http.StatusBadRequest)
+		}
+		defer func() {
+			if err := cookie.Save(r, w); err != nil {
+				log.Print(err.Error())
+			}
+		}()
 		token, err := s.app.Exchange(oauth2.NoContext, code)
 		if err != nil {
 			msg := "[Auth] failed to exchange authorization code for token"
@@ -104,22 +119,24 @@ func (s *Auth) Callback() http.HandlerFunc {
 			http.Error(w, msg, http.StatusBadRequest)
 		}
 		s.cache.Set(id.ID, jsonBytes, s.cacheExpiration)
-		r.AddCookie(&http.Cookie{
-			Name:    IdCookie,
-			Value:   id.ID,
-			Expires: time.Now().Add(s.cacheExpiration),
-		})
+
+		cookie.Values["id"] = id.ID
+
 		http.Redirect(w, r, s.dashboardPath, http.StatusTemporaryRedirect)
 	}
 }
 
 //GetSession gets the users session from the incoming http request
 func (s *Auth) GetSession(r *http.Request) (*fb.Session, error) {
-	cookie, err := r.Cookie(IdCookie)
-	if err != nil {
+	cookie, err := s.cookieStore.Get(r, CookieName)
+	if err != nil || cookie == nil {
 		return nil, err
 	}
-	tokenJSON, err := s.cache.Get(cookie.Value).Bytes()
+	id, ok := cookie.Values["id"].(string)
+	if !ok {
+		return nil, errors.New("no user id in cookie")
+	}
+	tokenJSON, err := s.cache.Get(id).Bytes()
 	if err != nil {
 		return nil, err
 	}
@@ -132,6 +149,14 @@ func (s *Auth) GetSession(r *http.Request) (*fb.Session, error) {
 		Version:    FBVersion,
 		HttpClient: s.app.Client(oauth2.NoContext, token),
 	}, nil
+}
+
+func (s *Auth) Do(r *http.Request, fn func(session *fb.Session) (fb.Result, error)) (fb.Result, error) {
+	sess, err := s.GetSession(r)
+	if err != nil {
+		return nil, err
+	}
+	return fn(sess)
 }
 
 //LoginURL returns a url  that begins the oauth2 flow at facebooks login portal
@@ -163,6 +188,9 @@ func (s *Auth) validate() error {
 	}
 	if s.app.RedirectURL == "" {
 		return errors.New("empty oauth2 redirect")
+	}
+	if s.cookieStore == nil {
+		return errors.New("empty cookie store")
 	}
 	return s.cache.Ping().Err()
 }

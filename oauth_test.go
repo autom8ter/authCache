@@ -22,7 +22,7 @@ func TestNewAuth(t *testing.T) {
 		AppSecret:     os.Getenv("FACEBOOK_APP_SECRET"),
 		Callback:      "https://autom8ter.com/oauth/facebook",
 		Scopes:        []string{"email"},
-		CacheDuration: 730 *time.Hour, //1 month
+		CacheDuration: 730 * time.Hour, //1 month
 		DashboardPath: "/home",
 	}
 	auth, err = facebook.NewAuth(config)
@@ -30,7 +30,6 @@ func TestNewAuth(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 }
-
 
 func TestAuth_LoginURL(t *testing.T) {
 	url := auth.LoginURL("")
