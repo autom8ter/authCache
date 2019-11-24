@@ -4,6 +4,7 @@ package facebook
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/go-redis/redis"
 	fb "github.com/huandu/facebook"
 	"golang.org/x/oauth2"
@@ -39,7 +40,7 @@ type Config struct {
 }
 
 //NewService initializes a new service instance
-func NewAuth(c *Config) *Auth {
+func NewAuth(c *Config) (*Auth, error) {
 	conf := &oauth2.Config{
 		ClientID:     c.AppID,
 		ClientSecret: c.AppSecret,
@@ -47,12 +48,16 @@ func NewAuth(c *Config) *Auth {
 		Scopes:       c.Scopes,
 		Endpoint:     oauth2fb.Endpoint,
 	}
-	return &Auth{
+	a :=  &Auth{
 		cache:           c.Cache,
 		cacheExpiration: c.CacheDuration,
 		dashboardPath:   c.DashboardPath,
 		app:             conf,
 	}
+	if err := a.validate(); err != nil {
+		return  nil, err
+	}
+	return a, nil
 }
 
 //Callback returns an http.HandlerFunc that may be used as a facebook Oauth2 callback handler(Authorization code grant)
@@ -132,4 +137,32 @@ func (s *Auth) GetSession(r *http.Request) (*fb.Session, error) {
 //LoginURL returns a url  that begins the oauth2 flow at facebooks login portal
 func (s *Auth) LoginURL(state string) string {
 	return s.app.AuthCodeURL(state, oauth2.AccessTypeOnline)
+}
+
+func (s *Auth) validate() error {
+	if s == nil {
+		return errors.New("empty auth struct")
+	}
+	if s.app == nil {
+		return errors.New("empty oauth2 config")
+	}
+	if s.cache == nil {
+		return errors.New("empty cache")
+	}
+	if s.dashboardPath == "" {
+		return errors.New("empty dashboard path")
+	}
+	if len(s.app.Scopes) == 0 {
+		return errors.New("empty oauth2 scopes")
+	}
+	if s.app.ClientID == "" {
+		return errors.New("empty oauth2 clientId")
+	}
+	if s.app.ClientSecret == "" {
+		return errors.New("empty oauth2 client secret")
+	}
+	if s.app.RedirectURL == "" {
+		return errors.New("empty oauth2 redirect")
+	}
+	return s.cache.Ping().Err()
 }
