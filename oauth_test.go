@@ -1,6 +1,7 @@
 package facebook_test
 
 import (
+	"fmt"
 	"github.com/autom8ter/facebook"
 	"github.com/go-redis/redis"
 	"os"
@@ -19,7 +20,7 @@ func TestNewAuth(t *testing.T) {
 		Cache:         redisClient,
 		AppID:         os.Getenv("FACEBOOK_APP_ID"),
 		AppSecret:     os.Getenv("FACEBOOK_APP_SECRET"),
-		Callback:      "localhost:8080",
+		Callback:      "https://autom8ter.com/oauth/facebook",
 		Scopes:        []string{"email"},
 		CacheDuration: 730 *time.Hour, //1 month
 		DashboardPath: "/home",
@@ -28,4 +29,13 @@ func TestNewAuth(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
+}
+
+
+func TestAuth_LoginURL(t *testing.T) {
+	url := auth.LoginURL("")
+	if url == "" {
+		t.Fatal("empty login url")
+	}
+	fmt.Println(url)
 }
