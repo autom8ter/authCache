@@ -6,7 +6,7 @@
 ## Usage
 
 ```go
-const IdCookie = "fb_id"
+const CookieName = "fb_auth"
 ```
 IdCookie is then name of the cookie that contains a facebook users id(used to
 query redis for jwt token)
@@ -29,7 +29,7 @@ token in redis for reuse
 #### func  NewAuth
 
 ```go
-func NewAuth(c *Config) *Auth
+func NewAuth(c *Config) (*Auth, error)
 ```
 NewService initializes a new service instance
 
@@ -41,10 +41,17 @@ func (s *Auth) Callback() http.HandlerFunc
 Callback returns an http.HandlerFunc that may be used as a facebook Oauth2
 callback handler(Authorization code grant)
 
+#### func (*Auth) Do
+
+```go
+func (s *Auth) Do(r *http.Request, fn func(*Session) (fb.Result, error)) (fb.Result, error)
+```
+Do gets the currently logged in users session, then runs a function against it
+
 #### func (*Auth) GetSession
 
 ```go
-func (s *Auth) GetSession(r *http.Request) (*fb.Session, error)
+func (s *Auth) GetSession(r *http.Request) (*Session, error)
 ```
 GetSession gets the users session from the incoming http request
 
@@ -66,7 +73,21 @@ type Config struct {
 	Scopes        []string
 	CacheDuration time.Duration
 	DashboardPath string
+	SessionSecret string
 }
 ```
 
 Config contains the required configuration for a Service
+
+#### type Session
+
+```go
+type Session struct {
+	Cache           *redis.Client
+	WebSession      *sessions.Session
+	FacebookSession *fb.Session
+}
+```
+
+Session holds a redis client, a secure web session, & a facebook session for
+make api requests

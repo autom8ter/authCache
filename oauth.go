@@ -42,6 +42,13 @@ type Config struct {
 	SessionSecret string
 }
 
+//Session  holds a redis client, a secure web session, & a facebook session for make api requests
+type Session struct {
+	Cache *redis.Client
+	WebSession     *sessions.Session
+	FacebookSession *fb.Session
+}
+
 //NewService initializes a new service instance
 func NewAuth(c *Config) (*Auth, error) {
 	conf := &oauth2.Config{
@@ -127,7 +134,7 @@ func (s *Auth) Callback() http.HandlerFunc {
 }
 
 //GetSession gets the users session from the incoming http request
-func (s *Auth) GetSession(r *http.Request) (*fb.Session, error) {
+func (s *Auth) GetSession(r *http.Request) (*Session, error) {
 	cookie, err := s.cookieStore.Get(r, CookieName)
 	if err != nil || cookie == nil {
 		return nil, err
@@ -145,13 +152,18 @@ func (s *Auth) GetSession(r *http.Request) (*fb.Session, error) {
 		return nil, err
 	}
 
-	return &fb.Session{
-		Version:    FBVersion,
-		HttpClient: s.app.Client(oauth2.NoContext, token),
+	return &Session{
+		Cache:           s.cache,
+		WebSession:      cookie,
+		FacebookSession: &fb.Session{
+			Version:    FBVersion,
+			HttpClient: s.app.Client(oauth2.NoContext, token),
+		},
 	}, nil
 }
 
-func (s *Auth) Do(r *http.Request, fn func(session *fb.Session) (fb.Result, error)) (fb.Result, error) {
+//Do gets the currently logged in users session, then runs  a function against it
+func (s *Auth) Do(r *http.Request, fn func(*Session) (fb.Result, error)) (fb.Result, error) {
 	sess, err := s.GetSession(r)
 	if err != nil {
 		return nil, err
