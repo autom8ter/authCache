@@ -2,36 +2,42 @@ package facebook
 
 import (
 	"encoding/json"
-	"golang.org/x/oauth2"
-	"log"
-	"net/http"
 	"github.com/go-redis/redis"
 	fb "github.com/huandu/facebook"
+	"golang.org/x/oauth2"
 	oauth2fb "golang.org/x/oauth2/facebook"
+	"log"
+	"net/http"
 	"time"
 )
 
+//IdCookie is then name of the cookie that contains a facebook users id(used to query redis for jwt token)
 const IdCookie = "fb_id"
-const FBVersion = "v2.4"
 
-type Service struct {
-	cache *redis.Client
-	cacheExpiration  time.Duration
-	dashboardPath string
-	app *oauth2.Config
+//FBVersion is the default version of the Facebook API
+var FBVersion = "v2.4"
+
+//OAuth2 handles Oauth2(Authorization code grant) requests and caches the users token in redis for reuse
+type Auth struct {
+	cache           *redis.Client
+	cacheExpiration time.Duration
+	dashboardPath   string
+	app             *oauth2.Config
 }
 
+//Config contains the required configuration for a Service
 type Config struct {
-	Cache *redis.Client
-	AppID string
-	AppSecret string
-	Callback string
-	Scopes []string
+	Cache         *redis.Client
+	AppID         string
+	AppSecret     string
+	Callback      string
+	Scopes        []string
 	CacheDuration time.Duration
 	DashboardPath string
 }
 
-func NewService(c *Config) *Service {
+//NewService initializes a new service instance
+func NewAuth(c *Config) *Auth {
 	conf := &oauth2.Config{
 		ClientID:     c.AppID,
 		ClientSecret: c.AppSecret,
@@ -39,7 +45,7 @@ func NewService(c *Config) *Service {
 		Scopes:       c.Scopes,
 		Endpoint:     oauth2fb.Endpoint,
 	}
-	return &Service{
+	return &Auth{
 		cache:           c.Cache,
 		cacheExpiration: c.CacheDuration,
 		dashboardPath:   c.DashboardPath,
@@ -47,26 +53,27 @@ func NewService(c *Config) *Service {
 	}
 }
 
-func (s *Service) OAuthHandler() http.HandlerFunc {
+//Callback returns an http.HandlerFunc that may be used as a facebook Oauth2 callback handler(Authorization code grant)
+func (s *Auth) Callback() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		code := r.URL.Query().Get("code")
 		if code == "" {
 			msg := "[Auth] authorization code empty"
 			log.Print(msg)
-			http.Error(w,msg,  http.StatusBadRequest)
+			http.Error(w, msg, http.StatusBadRequest)
 			return
 		}
 		token, err := s.app.Exchange(oauth2.NoContext, code)
 		if err != nil {
 			msg := "[Auth] failed to exchange authorization code for token"
 			log.Print(msg)
-			http.Error(w, msg,  http.StatusBadRequest)
+			http.Error(w, msg, http.StatusBadRequest)
 			return
 		}
 		client := s.app.Client(oauth2.NoContext, token)
 		// Use OAuth2 client with session.
 		session := &fb.Session{
-			Version:   FBVersion,
+			Version:    FBVersion,
 			HttpClient: client,
 		}
 		type ID struct {
@@ -80,26 +87,27 @@ func (s *Service) OAuthHandler() http.HandlerFunc {
 		if err := res.Decode(id); err != nil {
 			msg := "[Auth] failed to decode facebook user id"
 			log.Print(msg)
-			http.Error(w, msg,  http.StatusBadRequest)
+			http.Error(w, msg, http.StatusBadRequest)
 			return
 		}
 		jsonBytes, err := json.Marshal(token)
 		if err != nil {
 			msg := "[Auth] failed to marshal jwt"
 			log.Print(msg)
-			http.Error(w, msg,  http.StatusBadRequest)
+			http.Error(w, msg, http.StatusBadRequest)
 		}
 		s.cache.Set(id.ID, jsonBytes, s.cacheExpiration)
 		r.AddCookie(&http.Cookie{
-			Name:       IdCookie,
-			Value:      id.ID,
-			Expires:    time.Now().Add(s.cacheExpiration),
+			Name:    IdCookie,
+			Value:   id.ID,
+			Expires: time.Now().Add(s.cacheExpiration),
 		})
 		http.Redirect(w, r, s.dashboardPath, http.StatusTemporaryRedirect)
 	}
 }
 
-func (s *Service) GetSession(r *http.Request) (*fb.Session, error) {
+//GetSession gets the users session from the incoming http request
+func (s *Auth) GetSession(r *http.Request) (*fb.Session, error) {
 	cookie, err := r.Cookie(IdCookie)
 	if err != nil {
 		return nil, err
@@ -119,6 +127,7 @@ func (s *Service) GetSession(r *http.Request) (*fb.Session, error) {
 	}, nil
 }
 
-func (s *Service) LoginURL(state string) (string) {
+//LoginURL returns a url  that begins the oauth2 flow at facebooks login portal
+func (s *Auth) LoginURL(state string) string {
 	return s.app.AuthCodeURL(state, oauth2.AccessTypeOnline)
 }
