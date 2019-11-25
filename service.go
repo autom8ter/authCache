@@ -21,7 +21,7 @@ func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.mux.ServeHTTP(w, r)
 }
 
-//NewService returns an initialized configuration
+//NewService returns an initialized configuration. The map[string]*Config key should be the http path
 func NewService(store *sessions.CookieStore, redisClient *redis.Client, configs map[string]*Config) (*Service, error) {
 	mux := http.NewServeMux()
 	for path, config := range configs {
@@ -31,8 +31,10 @@ func NewService(store *sessions.CookieStore, redisClient *redis.Client, configs 
 		mux.HandleFunc(path, config.Callback(store, redisClient))
 	}
 	return &Service{
-		mux:     mux,
-		configs: configs,
+		mux:         mux,
+		configs:     configs,
+		store:       store,
+		redisClient: redisClient,
 	}, nil
 }
 

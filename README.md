@@ -91,7 +91,8 @@ the cookiestore and redis client needed by each config
 ```go
 func NewService(store *sessions.CookieStore, redisClient *redis.Client, configs map[string]*Config) (*Service, error)
 ```
-NewService returns an initialized configuration
+NewService returns an initialized configuration. The map[string]*Config key
+should be the http path
 
 #### func (*Service) GetClientByConfig
 
