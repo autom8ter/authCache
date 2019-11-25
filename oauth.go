@@ -52,6 +52,7 @@ type Session struct {
 //AuthFunc is a first-class function used to run logic against an incoming http request
 type AuthFunc func(*Session) (fb.Result, error)
 
+//Do runs the AuthFunc, then decodes the result to the input target
 func (a AuthFunc) Do(s *Session, target interface{}) error {
 	res, err := a(s)
 	if err != nil {

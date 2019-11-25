@@ -76,6 +76,7 @@ request
 ```go
 func (a AuthFunc) Do(s *Session, target interface{}) error
 ```
+Do runs the AuthFunc, then decodes the result to the input target
 
 #### type Config
 
