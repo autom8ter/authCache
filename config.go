@@ -25,7 +25,7 @@ type Processor func(config *Config, client *http.Client) error
 
 //Config contains the required configuration for a Service
 type Config struct {
-	Name string
+	Name       string
 	RedirectTo string
 	App        *oauth2.Config
 	Do         Processor

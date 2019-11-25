@@ -83,21 +83,27 @@ type Service struct {
 }
 ```
 
+Service stores configs, serves them as oauth2 callback handlers, and provides
+the cookiestore and redis client needed by each config
 
 #### func  NewService
 
 ```go
-func NewService(store *sessions.CookieStore, redisClient *redis.Client, configs map[string]*Config) *Service
+func NewService(store *sessions.CookieStore, redisClient *redis.Client, configs map[string]*Config) (*Service, error)
 ```
+NewService returns an initialized configuration
 
-#### func (*Service) GetClient
+#### func (*Service) GetClientByConfig
 
 ```go
-func (s *Service) GetClient(r *http.Request, configName string) (*http.Client, error)
+func (s *Service) GetClientByConfig(r *http.Request, configName string) (*http.Client, error)
 ```
+GetClientByConfig gets an authenticated http.Client for the logged in user from
+a cached jwt token(if it exists) from the named config
 
 #### func (*Service) ServeHTTP
 
 ```go
 func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request)
 ```
+ServeHTTP satisfies the http.Handler interface so it can be added to a go server
