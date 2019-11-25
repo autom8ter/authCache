@@ -33,12 +33,6 @@ func NewAuth(c *Config) (*Auth, error)
 ```
 NewService initializes a new service instance
 
-#### func (*Auth) Cache
-
-```go
-func (a *Auth) Cache() *redis.Client
-```
-
 #### func (*Auth) Callback
 
 ```go
@@ -46,12 +40,6 @@ func (s *Auth) Callback() http.HandlerFunc
 ```
 Callback returns an http.HandlerFunc that may be used as a facebook Oauth2
 callback handler(Authorization code grant)
-
-#### func (*Auth) CookieStore
-
-```go
-func (a *Auth) CookieStore() *sessions.CookieStore
-```
 
 #### func (*Auth) Do
 

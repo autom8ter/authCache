@@ -217,11 +217,3 @@ func (s *Auth) validate() error {
 	}
 	return s.cache.Ping().Err()
 }
-
-func (a *Auth) Cache() *redis.Client {
-	return a.cache
-}
-
-func (a *Auth) CookieStore() *sessions.CookieStore {
-	return a.cookieStore
-}
