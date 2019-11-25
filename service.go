@@ -46,3 +46,12 @@ func (s *Service) GetClientByConfig(r *http.Request, configName string) (*http.C
 	}
 	return s.configs[configName].GetClient(r, s.store, s.redisClient)
 }
+
+//Gets an authenticated http client from the incoming request, then runs a processor function against it
+func (s *Service) Process(r *http.Request, configName string, processor Processor) error {
+	client, err  := s.GetClientByConfig(r, configName)
+	if err != nil {
+		return err
+	}
+	return processor(s.configs[configName], client)
+}

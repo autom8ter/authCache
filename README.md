@@ -102,6 +102,14 @@ func (s *Service) GetClientByConfig(r *http.Request, configName string) (*http.C
 GetClientByConfig gets an authenticated http.Client for the logged in user from
 a cached jwt token(if it exists) from the named config
 
+#### func (*Service) Process
+
+```go
+func (s *Service) Process(r *http.Request, configName string, processor Processor) error
+```
+Gets an authenticated http client from the incoming request, then runs a
+processor function against it
+
 #### func (*Service) ServeHTTP
 
 ```go
