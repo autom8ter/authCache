@@ -33,6 +33,12 @@ func NewAuth(c *Config) (*Auth, error)
 ```
 NewService initializes a new service instance
 
+#### func (*Auth) Cache
+
+```go
+func (a *Auth) Cache() *redis.Client
+```
+
 #### func (*Auth) Callback
 
 ```go
@@ -41,10 +47,16 @@ func (s *Auth) Callback() http.HandlerFunc
 Callback returns an http.HandlerFunc that may be used as a facebook Oauth2
 callback handler(Authorization code grant)
 
+#### func (*Auth) CookieStore
+
+```go
+func (a *Auth) CookieStore() *sessions.CookieStore
+```
+
 #### func (*Auth) Do
 
 ```go
-func (s *Auth) Do(r *http.Request, fn func(*Session) (fb.Result, error)) (fb.Result, error)
+func (s *Auth) Do(r *http.Request, fn AuthFunc, target interface{}) error
 ```
 Do gets the currently logged in users session, then runs a function against it
 
@@ -61,6 +73,21 @@ GetSession gets the users session from the incoming http request
 func (s *Auth) LoginURL(state string) string
 ```
 LoginURL returns a url that begins the oauth2 flow at facebooks login portal
+
+#### type AuthFunc
+
+```go
+type AuthFunc func(*Session) (fb.Result, error)
+```
+
+AuthFunc is a first-class function used to run logic against an incoming http
+request
+
+#### func (AuthFunc) Do
+
+```go
+func (a AuthFunc) Do(s *Session, target interface{}) error
+```
 
 #### type Config
 

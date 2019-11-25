@@ -44,9 +44,20 @@ type Config struct {
 
 //Session  holds a redis client, a secure web session, & a facebook session for make api requests
 type Session struct {
-	Cache *redis.Client
-	WebSession     *sessions.Session
+	Cache           *redis.Client
+	WebSession      *sessions.Session
 	FacebookSession *fb.Session
+}
+
+//AuthFunc is a first-class function used to run logic against an incoming http request
+type AuthFunc func(*Session) (fb.Result, error)
+
+func (a AuthFunc) Do(s *Session, target interface{}) error {
+	res, err := a(s)
+	if err != nil {
+		return err
+	}
+	return res.Decode(target)
 }
 
 //NewService initializes a new service instance
@@ -153,8 +164,8 @@ func (s *Auth) GetSession(r *http.Request) (*Session, error) {
 	}
 
 	return &Session{
-		Cache:           s.cache,
-		WebSession:      cookie,
+		Cache:      s.cache,
+		WebSession: cookie,
 		FacebookSession: &fb.Session{
 			Version:    FBVersion,
 			HttpClient: s.app.Client(oauth2.NoContext, token),
@@ -163,12 +174,12 @@ func (s *Auth) GetSession(r *http.Request) (*Session, error) {
 }
 
 //Do gets the currently logged in users session, then runs  a function against it
-func (s *Auth) Do(r *http.Request, fn func(*Session) (fb.Result, error)) (fb.Result, error) {
+func (s *Auth) Do(r *http.Request, fn AuthFunc, target interface{}) error {
 	sess, err := s.GetSession(r)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return fn(sess)
+	return fn.Do(sess, target)
 }
 
 //LoginURL returns a url  that begins the oauth2 flow at facebooks login portal
@@ -205,4 +216,12 @@ func (s *Auth) validate() error {
 		return errors.New("empty cookie store")
 	}
 	return s.cache.Ping().Err()
+}
+
+func (a *Auth) Cache() *redis.Client {
+	return a.cache
+}
+
+func (a *Auth) CookieStore() *sessions.CookieStore {
+	return a.cookieStore
 }

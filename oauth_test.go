@@ -41,7 +41,7 @@ func TestAuth_LoginURL(t *testing.T) {
 }
 
 func TestAuth_GetSession(t *testing.T) {
-	_,  err := auth.GetSession(&http.Request{})
+	_, err := auth.GetSession(&http.Request{})
 	if err == nil {
 		t.Fatal("expected test to fail due to empty user id in cookie")
 	}
