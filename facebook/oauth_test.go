@@ -1,4 +1,4 @@
-package authcache_test
+package facebook_test
 
 import (
 	"fmt"

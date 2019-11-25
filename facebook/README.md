@@ -1,6 +1,6 @@
 # facebook
 --
-    import "github.com/autom8ter/facebook"
+    import "github.com/autom8ter/authCache/facebook"
 
 
 ## Usage
