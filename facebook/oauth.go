@@ -1,6 +1,6 @@
 //go:generate godocdown -o README.md
 
-package facebook
+package authcache
 
 import (
 	"encoding/json"
