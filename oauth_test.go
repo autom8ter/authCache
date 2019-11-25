@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/autom8ter/facebook"
 	"github.com/go-redis/redis"
+	"net/http"
 	"os"
 	"testing"
 	"time"
@@ -37,4 +38,11 @@ func TestAuth_LoginURL(t *testing.T) {
 		t.Fatal("empty login url")
 	}
 	fmt.Println(url)
+}
+
+func TestAuth_GetSession(t *testing.T) {
+	_,  err := auth.GetSession(&http.Request{})
+	if err == nil {
+		t.Fatal("expected test to fail due to empty user id in cookie")
+	}
 }
