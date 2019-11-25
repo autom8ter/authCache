@@ -25,14 +25,15 @@ type Processor func(config *Config, client *http.Client) error
 
 //Config contains the required configuration for a Service
 type Config struct {
+	Name string
 	RedirectTo string
 	App        *oauth2.Config
 	Do         Processor
 }
 
 //NewConfig returns an initialized configuration
-func NewConfig(redirectTo string, app *oauth2.Config, do Processor) *Config {
-	return &Config{RedirectTo: redirectTo, App: app, Do: do}
+func NewConfig(name string, redirectTo string, app *oauth2.Config, do Processor) *Config {
+	return &Config{Name: name, RedirectTo: redirectTo, App: app, Do: do}
 }
 
 //Callback returns an http.HandlerFunc that may be used as a Oauth2 callback handler(Authorization code grant).
@@ -46,7 +47,7 @@ func (c *Config) Callback(store *sessions.CookieStore, cache *redis.Client) http
 			http.Error(w, msg, http.StatusBadRequest)
 			return
 		}
-		cookie, err := store.Get(r, c.App.Endpoint.AuthURL)
+		cookie, err := store.Get(r, c.Name)
 		if err != nil || cookie == nil {
 			msg := "[Auth] failed to get session cookie"
 			log.Print(msg)
@@ -89,7 +90,7 @@ func (c *Config) Callback(store *sessions.CookieStore, cache *redis.Client) http
 
 //GetClient gets an authenticated http.Client for the logged in user from a cached jwt token(if it exists)
 func (s *Config) GetClient(r *http.Request, store *sessions.CookieStore, cache *redis.Client) (*http.Client, error) {
-	cookie, err := store.Get(r, s.App.Endpoint.AuthURL)
+	cookie, err := store.Get(r, s.Name)
 	if err != nil || cookie == nil {
 		return nil, err
 	}

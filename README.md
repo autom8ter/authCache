@@ -20,6 +20,7 @@ DefaultCacheDuration is the default number of hours to cache JWT tokens
 
 ```go
 type Config struct {
+	Name       string
 	RedirectTo string
 	App        *oauth2.Config
 	Do         Processor
@@ -31,7 +32,7 @@ Config contains the required configuration for a Service
 #### func  NewConfig
 
 ```go
-func NewConfig(redirectTo string, app *oauth2.Config, do Processor) *Config
+func NewConfig(name string, redirectTo string, app *oauth2.Config, do Processor) *Config
 ```
 NewConfig returns an initialized configuration
 
@@ -74,3 +75,29 @@ type Processor func(config *Config, client *http.Client) error
 
 Processor runs a function against a config and an authenticated http client (use
 to do things like send to pubsub/save to db etc within the Callback function)
+
+#### type Service
+
+```go
+type Service struct {
+}
+```
+
+
+#### func  NewService
+
+```go
+func NewService(store *sessions.CookieStore, redisClient *redis.Client, configs map[string]*Config) *Service
+```
+
+#### func (*Service) GetClient
+
+```go
+func (s *Service) GetClient(r *http.Request, configName string) (*http.Client, error)
+```
+
+#### func (*Service) ServeHTTP
+
+```go
+func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request)
+```
